@@ -97,8 +97,11 @@ class AIReviewSkill:
         )
 
 
+LOCAL_SKILLS: list[Any] = [AIExplainSkill(), AIPlanSkill(), AITipSkill(), AIReviewSkill()]
+
+
 def local_provider() -> AIProvider:
-    return LocalDemoProvider([AIExplainSkill(), AIPlanSkill(), AITipSkill(), AIReviewSkill()])
+    return LocalDemoProvider(LOCAL_SKILLS)
 
 
 # ---------------------------------------------------------------------------
