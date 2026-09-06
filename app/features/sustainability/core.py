@@ -150,6 +150,7 @@ class ActionInstance:
             "baseline_effort": self.template.baseline_effort,
             "cost_usd": self.template.cost_usd,
             "duration_minutes": self.template.duration_minutes,
+            "needs_learning": self.template.needs_learning,
             "chosen_by": self.chosen_by,
             "score": self.score,
             "note": self.note,
