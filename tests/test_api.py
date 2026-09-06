@@ -30,6 +30,7 @@ def test_full_flow(client):
     assert goal["reframed_goal"]
     assert len(goal["plan"]["chosen"]) >= 4
     assert len(goal["plan"]["milestones"]) >= 3
+    assert all(isinstance(f, dict) and "multiplier" in f for f in goal["plan"]["feasibility"])
     assert goal["plan"]["total_impact"]["kg"] > 0 or goal["plan"]["total_impact"]["items"] > 0
 
     goal_id = goal["id"]
