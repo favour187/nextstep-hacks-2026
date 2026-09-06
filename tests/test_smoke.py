@@ -1,4 +1,4 @@
-"""Smoke tests: the scaffold's wiring works (health, auth, AI, feature router)."""
+"""Smoke tests: scaffold wiring still works after the real feature landed."""
 
 from app.core.testing import auth_headers, create_user
 
@@ -12,16 +12,17 @@ def test_health(client):
 
 
 def test_feature_router(client):
-    res = client.get("/api/sustainability/status")
+    data = create_user(client, email="smoke@example.com")
+    res = client.get("/api/sustainability/goals", headers=auth_headers(data["token"]))
     assert res.status_code == 200
-    assert res.json()["feature"] == "sustainability"
+    assert res.json() == {"goals": []}
 
 
 def test_auth_flow(client):
-    data = create_user(client, email="smoke@example.com")
+    data = create_user(client, email="smoke2@example.com")
     me = client.get("/api/auth/me", headers=auth_headers(data["token"]))
     assert me.status_code == 200
-    assert me.json()["email"] == "smoke@example.com"
+    assert me.json()["email"] == "smoke2@example.com"
 
 
 def test_ai_ping(client):
