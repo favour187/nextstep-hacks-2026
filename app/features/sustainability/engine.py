@@ -1,15 +1,7 @@
-"""StepWise planning engine: turns a goal into a concrete plan.
-
-Deterministic, pure functions — no DB, no AI. The API layer combines these
-with persisted state; the AI skills add conversational flavour on top.
-"""
-
 from __future__ import annotations
-
 from dataclasses import asdict, dataclass, field
 from datetime import date, timedelta
 from typing import Any
-
 from app.features.sustainability.core import (
     ActionInstance,
     ImpactCategory,
@@ -27,12 +19,10 @@ from app.features.sustainability.library import templates_for_category
 
 @dataclass(slots=True)
 class GeneratedPlan:
-    """The full result of planning a goal (not yet persisted)."""
-
     reframe: Reframe
     category: ImpactCategory
     chosen: list[ActionInstance]
-    feasibility: list[Any]  # FeasibleGroup serialised dicts
+    feasibility: list[Any]
     milestones: list[Milestone]
     total_impact: ImpactVector
     explanation: str
@@ -49,7 +39,6 @@ class GeneratedPlan:
         }
 
 
-# Default plan sizes, tuned so the demo is rich but not overwhelming.
 _MAX_ACTIONS = 6
 _MIN_ACTIONS = 4
 
@@ -62,26 +51,19 @@ def plan_for_goal(
     horizon_days: int = 30,
     weights: Weights | None = None,
 ) -> GeneratedPlan:
-    """The deterministic planner — the heart of StepWise."""
     weight_obj = weights or Weights()
     reframe = reframe_goal(goal)
-    category = reframe.category  # the category was inferred; use it
-
+    category = reframe.category
     candidates = [ActionInstance(template=t) for t in templates_for_category(category)]
     scored = assign_action_scores(candidates, weight_obj, category=category)
-
-    # Pick a balanced shortlist: top ranked but keep variety of friction.
     shortlist = scored[:_MAX_ACTIONS]
     if len(shortlist) < _MIN_ACTIONS:
-        # Top up from adjacent categories when a category has few actions.
         fallback = [
             ActionInstance(template=t)
             for t in templates_for_category(_neighbour(category))
         ]
         fallback = assign_action_scores(fallback, weight_obj)
         shortlist += fallback[: _MIN_ACTIONS - len(shortlist)]
-
-    # Feasibility: how many times can this realistically happen in the horizon?
     feasible = compute_feasibility(
         shortlist,
         weekly_effort_hours=weekly_effort_hours,
@@ -89,14 +71,13 @@ def plan_for_goal(
         horizon_days=horizon_days,
         category=category,
     )
-
     milestones = _build_milestones(shortlist, horizon_days)
     total = sum_impacts([a.impact for a in shortlist])
     explanation = (
-        f"Your {category.value} goal got reframed into {len(shortlist)} concrete actions "
-        f"(from the {len(candidates)} candidates in the {category.value} library). "
+        f"Your {category .value } goal got reframed into {len (shortlist )} concrete actions "
+        f"(from the {len (candidates )} candidates in the {category .value } library). "
         f"We prioritised actions whose impact-per-effort is high, so your first move "
-        f"is a low-friction step you can do this week: “{shortlist[0].template.title}”."
+        f"is a low-friction step you can do this week: “{shortlist [0 ].template .title }”."
     )
     return GeneratedPlan(
         reframe=reframe,
@@ -110,7 +91,6 @@ def plan_for_goal(
 
 
 def _neighbour(category: ImpactCategory) -> ImpactCategory:
-    """A related category to top up plans that are thin."""
     return {
         ImpactCategory.WASTE: ImpactCategory.CONSUMPTION,
         ImpactCategory.ENERGY: ImpactCategory.WATER,
@@ -121,38 +101,39 @@ def _neighbour(category: ImpactCategory) -> ImpactCategory:
     }[category]
 
 
-def _build_milestones(actions: list[ActionInstance], horizon_days: int) -> list[Milestone]:
-    """Milestones are spread across the horizon to create a schedule."""
+def _build_milestones(
+    actions: list[ActionInstance], horizon_days: int
+) -> list[Milestone]:
     if not actions:
         return []
     top = actions[0]
     steps = [
         Milestone(
-            title=f"Learn one fact about {top.template.title.lower()}",
+            title=f"Learn one fact about {top .template .title .lower ()}",
             due_offset_days=2,
         ),
         Milestone(
-            title=f"Do “{top.template.title}” once",
+            title=f"Do “{top .template .title }” once",
             due_offset_days=5,
         ),
     ]
     if len(actions) > 1:
         steps.append(
             Milestone(
-                title=f"Add “{actions[1].template.title}” to your routine",
+                title=f"Add “{actions [1 ].template .title }” to your routine",
                 due_offset_days=max(8, horizon_days // 3),
             )
         )
     if len(actions) > 2:
         steps.append(
             Milestone(
-                title=f"Take stock: what changed after {max(10, horizon_days // 2)} days?",
+                title=f"Take stock: what changed after {max (10 ,horizon_days //2 )} days?",
                 due_offset_days=max(10, horizon_days // 2),
             )
         )
     steps.append(
         Milestone(
-            title=f"Review the full plan at day {horizon_days}",
+            title=f"Review the full plan at day {horizon_days }",
             due_offset_days=horizon_days,
         )
     )
@@ -160,7 +141,6 @@ def _build_milestones(actions: list[ActionInstance], horizon_days: int) -> list[
 
 
 def plan_manifest(plan: GeneratedPlan) -> dict[str, Any]:
-    """Serialise the plan's user-facing essence (used by the API)."""
     return {
         "reframe": plan.reframe.to_dict(),
         "category": plan.category.value,
@@ -178,11 +158,9 @@ def apply_checkin(
     *,
     check_in_date: date | None = None,
 ) -> ImpactVector:
-    """Record a check-in for a set of actions; returns the added impact."""
     day = check_in_date or date.today()
     matched = [a for a in plan.actions if a.action_id in action_ids]
     added = sum_impacts([a.impact for a in matched])
-    # A check-in marks the milestone due as done if it's the earliest pending.
     pending = [m for m in plan.milestones if not m.done]
     if pending and pending[0].due_offset_days <= (day - plan.created_at).days:
         pending[0].done = True

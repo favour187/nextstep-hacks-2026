@@ -1,17 +1,11 @@
-"""Curated action library for StepWise: domain knowledge, not model output.
-
-Each template encodes one behaviour with its effect (ImpactVector), friction
-attributes (cost, time, effort, learning) so the decision model can score it.
-Numbers are order-of-magnitude, per-action typical values — documented as
-estimates in the README so nothing is presented as precise science.
-"""
-
 from __future__ import annotations
-
-from app.features.sustainability.core import ActionTemplate, ImpactCategory, ImpactVector
+from app.features.sustainability.core import (
+    ActionTemplate,
+    ImpactCategory,
+    ImpactVector,
+)
 
 LIBRARY: list[ActionTemplate] = [
-    # ---- waste ------------------------------------------------------
     ActionTemplate(
         action_id="waste_bag_for_bin",
         title="Line your bin with a bag; rinse out recyclables",
@@ -73,8 +67,6 @@ LIBRARY: list[ActionTemplate] = [
         needs_learning=True,
         description="Find one stream near you (e-waste, textiles, batteries, soft plastics).",
     ),
-
-    # ---- energy -----------------------------------------------------
     ActionTemplate(
         action_id="energy_led_swap",
         title="Swap one bulb to LED",
@@ -135,8 +127,6 @@ LIBRARY: list[ActionTemplate] = [
         needs_learning=False,
         description="Dryers are among the hungriest appliances in the home.",
     ),
-
-    # ---- water ------------------------------------------------------
     ActionTemplate(
         action_id="water_tap_off",
         title="Turn the tap off while brushing / scrubbing",
@@ -185,8 +175,6 @@ LIBRARY: list[ActionTemplate] = [
         needs_learning=False,
         description="A slow leak can waste hundreds of litres a day.",
     ),
-
-    # ---- transport --------------------------------------------------
     ActionTemplate(
         action_id="travel_plan_bike",
         title="Replace one short car trip with a bike/walk",
@@ -235,8 +223,6 @@ LIBRARY: list[ActionTemplate] = [
         needs_learning=False,
         description="Sharing a ride halves per-person emissions.",
     ),
-
-    # ---- food -------------------------------------------------------
     ActionTemplate(
         action_id="food_freezer_surplus",
         title="Freeze leftovers/surplus food the same day",
@@ -285,8 +271,6 @@ LIBRARY: list[ActionTemplate] = [
         needs_learning=False,
         description="Less transport and cold chain per meal.",
     ),
-
-    # ---- consumption ------------------------------------------------
     ActionTemplate(
         action_id="buy_wait_48h",
         title="Apply a 48-hour wait before one non-essential purchase",

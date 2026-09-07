@@ -1,14 +1,7 @@
-"""StepWise API routes for NextStep Hacks 2026.
-
-All routes require authentication (bearer token from the shared auth module).
-"""
-
 from __future__ import annotations
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-
 from app.core.auth import User, get_current_user
 from app.core.db import get_db
 from app.core.errors import NotFoundError, ValidationFailedError
@@ -17,9 +10,6 @@ from app.features.sustainability import service
 router = APIRouter(prefix="/sustainability", tags=["sustainability"])
 
 
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
 class CreateGoalIn(BaseModel):
     goal_text: str = Field(min_length=4, max_length=400)
     weekly_effort_hours: float = Field(default=2.0, ge=0, le=40)
@@ -39,9 +29,6 @@ class ChatIn(BaseModel):
     goal_id: str | None = None
 
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 @router.post("/goals", status_code=201)
 def create_goal(
     payload: CreateGoalIn,

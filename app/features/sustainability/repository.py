@@ -1,17 +1,11 @@
-"""Persistence for StepWise plans (SQLAlchemy models + repository functions)."""
-
 from __future__ import annotations
-
 import json
 import uuid
 from datetime import date, datetime
-
 from sqlalchemy import Uuid
 from typing import Any
-
 from sqlalchemy import DateTime, ForeignKey, String, Text, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
-
 from app.core.db import Base, TimestampsMixin, UUIDMixin, iso_utc, utcnow
 
 
@@ -29,10 +23,7 @@ def _json_loads(raw: str | None) -> Any:
 
 
 class GoalEntity(UUIDMixin, TimestampsMixin, Base):
-    """A user's sustainability goal + its generated plan."""
-
     __tablename__ = "sustainability_goals"
-
     user_id: Mapped[str] = mapped_column(String(64), index=True)
     goal_text: Mapped[str] = mapped_column(Text)
     reframed_goal: Mapped[str] = mapped_column(Text, default="")
@@ -41,12 +32,9 @@ class GoalEntity(UUIDMixin, TimestampsMixin, Base):
     horizon_days: Mapped[int] = mapped_column(default=30)
     weekly_effort_hours: Mapped[float] = mapped_column(default=2.0)
     weekly_budget_usd: Mapped[float] = mapped_column(default=10.0)
-    # The deterministic plan, serialised as JSON (actions, milestones, feasibility).
     plan_json: Mapped[str] = mapped_column(Text, default="{}")
-    # Running totals (avoid recomputing from JSON each time).
     impact_json: Mapped[str] = mapped_column(Text, default="{}")
     status: Mapped[str] = mapped_column(String(16), default="active")
-
     check_ins: Mapped[list["CheckInEntity"]] = relationship(
         back_populates="goal", cascade="all, delete-orphan"
     )
@@ -77,17 +65,15 @@ class GoalEntity(UUIDMixin, TimestampsMixin, Base):
 
 
 class CheckInEntity(UUIDMixin, Base):
-    """One user check-in: which actions were done on which day."""
-
     __tablename__ = "sustainability_check_ins"
-
-    goal_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("sustainability_goals.id"), index=True)
+    goal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("sustainability_goals.id"), index=True
+    )
     check_in_date: Mapped[date] = mapped_column(default=date.today)
     action_ids_json: Mapped[str] = mapped_column(Text, default="[]")
     notes: Mapped[str] = mapped_column(Text, default="")
     feeling_score: Mapped[int] = mapped_column(default=3)
     recorded_at: Mapped[datetime] = mapped_column(default=utcnow)
-
     goal: Mapped[GoalEntity] = relationship(back_populates="check_ins")
 
     @property
@@ -125,12 +111,18 @@ def create_goal(db: Session, user_id: str, data: dict[str, Any]) -> GoalEntity:
 
 def get_goal(db: Session, goal_id: str, user_id: str) -> GoalEntity | None:
     return db.scalar(
-        select(GoalEntity).where(GoalEntity.id == uuid.UUID(goal_id), GoalEntity.user_id == user_id)
+        select(GoalEntity).where(
+            GoalEntity.id == uuid.UUID(goal_id), GoalEntity.user_id == user_id
+        )
     )
 
 
 def list_goals(db: Session, user_id: str) -> list[GoalEntity]:
-    stmt = select(GoalEntity).where(GoalEntity.user_id == user_id).order_by(GoalEntity.created_at.desc())
+    stmt = (
+        select(GoalEntity)
+        .where(GoalEntity.user_id == user_id)
+        .order_by(GoalEntity.created_at.desc())
+    )
     return list(db.scalars(stmt))
 
 

@@ -5,7 +5,6 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nextstep-hacks-2026"
 version = "0.1.0"
-description = "NextStep Hacks 2026 (HackAlphaX / Devpost) submission repository — Turn environmental goals into real, trackable next steps."
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1",

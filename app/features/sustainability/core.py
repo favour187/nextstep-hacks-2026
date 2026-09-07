@@ -1,13 +1,4 @@
-"""StepWise core: the deterministic, fully-testable domain model.
-
-Everything here is pure Python (no DB, no AI, no web) so the product's
-decision logic can be unit-tested exhaustively and can never fail because an
-LLM is unavailable. The AI layer (skills) sits on top of this to make the
-same concepts conversational.
-"""
-
 from __future__ import annotations
-
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -15,9 +6,6 @@ from enum import StrEnum
 from typing import Any
 
 
-# ---------------------------------------------------------------------------
-# Domain enums
-# ---------------------------------------------------------------------------
 class ImpactCategory(StrEnum):
     WASTE = "waste"
     ENERGY = "energy"
@@ -36,27 +24,11 @@ class FrictionKind(StrEnum):
     ACCESS = "access"
 
 
-# ---------------------------------------------------------------------------
-# Units & impact
-# ---------------------------------------------------------------------------
 UNIT_KEYS = ("kg", "co2e_kg", "kwh", "litres", "kg_food", "items")
 
 
 @dataclass(frozen=True, slots=True)
 class ImpactVector:
-    """The effect of performing an action once.
-
-    Fields are the canonical units the platform tracks:
-      - kg        : waste mass diverted/reduced (kg)
-      - co2e_kg   : greenhouse gases avoided (kg CO2e)
-      - kwh       : energy saved (kWh)
-      - litres    : water saved (litres)
-      - kg_food   : food waste prevented (kg)
-      - items     : single-use items avoided (count)
-
-    Values may be negative (an action that increases a metric).
-    """
-
     kg: float = 0.0
     co2e_kg: float = 0.0
     kwh: float = 0.0
@@ -65,7 +37,9 @@ class ImpactVector:
     items: float = 0.0
 
     def __add__(self, other: "ImpactVector") -> "ImpactVector":
-        return ImpactVector(**{k: getattr(self, k) + getattr(other, k) for k in UNIT_KEYS})
+        return ImpactVector(
+            **{k: getattr(self, k) + getattr(other, k) for k in UNIT_KEYS}
+        )
 
     def __mul__(self, factor: float) -> "ImpactVector":
         return ImpactVector(**{k: getattr(self, k) * factor for k in UNIT_KEYS})
@@ -87,30 +61,24 @@ def sum_impacts(vectors: list[ImpactVector]) -> ImpactVector:
     return total
 
 
-# ---------------------------------------------------------------------------
-# Library of actions (domain knowledge; curated, not model output)
-# ---------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class ActionTemplate:
-    """A candidate action the planner can recommend."""
-
     action_id: str
     title: str
     category: ImpactCategory
-    impact: ImpactVector                 # per execution
-    execution_unit: str                  # "per-day" | "per-week" | "per-item" | "one-time"
-    baseline_effort: int                 # 0..10 (0 = effortless)
-    cost_usd: float                      # marginal cost of doing it
-    duration_minutes: float              # typical time per execution
-    needs_learning: bool                 # requires research/learning before doing
-    setup_minutes: float = 0.0           # one-off setup time
+    impact: ImpactVector
+    execution_unit: str
+    baseline_effort: int
+    cost_usd: float
+    duration_minutes: float
+    needs_learning: bool
+    setup_minutes: float = 0.0
     description: str = ""
 
 
-# Weighted decision factors used by the recommender.
 @dataclass(frozen=True, slots=True)
 class Weights:
-    impact: float = 0.35  # kept for transparency; benefit is applied in scoring
+    impact: float = 0.35
     effort: float = 0.25
     cost: float = 0.15
     time: float = 0.10
@@ -118,19 +86,24 @@ class Weights:
     learning: float = 0.05
 
     def validate(self) -> None:
-        total = self.impact + self.effort + self.cost + self.time + self.habit + self.learning
+        total = (
+            self.impact
+            + self.effort
+            + self.cost
+            + self.time
+            + self.habit
+            + self.learning
+        )
         if abs(total - 1.0) > 1e-6:
-            raise ValueError(f"Weights must sum to 1.0 (got {total})")
+            raise ValueError(f"Weights must sum to 1.0 (got {total })")
 
 
 @dataclass(slots=True)
 class ActionInstance:
-    """One occurrence of an action, chosen for a plan, executed by the user."""
-
     template: ActionTemplate
-    chosen_by: str = "line"          # "line" (line) | "ai"
-    score: float | None = None       # assignment score at selection time
-    note: str | None = None          # e.g. reframed goal / rationale
+    chosen_by: str = "line"
+    score: float | None = None
+    note: str | None = None
 
     @property
     def impact(self) -> ImpactVector:
@@ -157,18 +130,8 @@ class ActionInstance:
         }
 
 
-# ---------------------------------------------------------------------------
-# Detriment quantification (decision-theoretic core)
-# ---------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class Detriment:
-    """Friction ("sludge") of a candidate action and its benefit.
-
-    - `benefit` : normalised positive effect of the action (0..1)
-    - `total`   : weighted friction (effort/time/cost/habit/learning), 0..1
-    A low `total` action is easy to adopt; a high `benefit` is worth adopting.
-    """
-
     benefit: float
     effort: float
     cost: float
@@ -190,7 +153,6 @@ class Detriment:
 
 
 def _log_scale(value: float, reference: float = 8.0) -> float:
-    """Smoothly compress a positive magnitude into 0..1 (log scale)."""
     if value <= 0:
         return 0.0
     import math
@@ -199,12 +161,6 @@ def _log_scale(value: float, reference: float = 8.0) -> float:
 
 
 def quantify_detriment(action: ActionInstance, weights: Weights) -> Detriment:
-    """Measure an action's friction vs. its benefit.
-
-    Lower `total` = easier to act on. This is what makes the recommendation a
-    real decision model rather than an LLM opinion: the same numbers drive the
-    UI, the tests and the AI's talking points.
-    """
     t = action.template
     magnitude = (
         t.impact.kg
@@ -215,13 +171,11 @@ def quantify_detriment(action: ActionInstance, weights: Weights) -> Detriment:
         + t.impact.items
     )
     benefit = _log_scale(magnitude)
-
     effort = min(1.0, t.baseline_effort / 10.0)
     cost = min(1.0, t.cost_usd / 50.0)
     time = min(1.0, t.duration_minutes / 60.0)
     habit = min(1.0, (t.baseline_effort + t.duration_minutes / 30.0) / 14.0)
     learning = 1.0 if t.needs_learning else 0.0
-
     total = (
         weights.effort * effort
         + weights.cost * cost
@@ -229,7 +183,15 @@ def quantify_detriment(action: ActionInstance, weights: Weights) -> Detriment:
         + weights.habit * habit
         + weights.learning * learning
     )
-    return Detriment(benefit=benefit, effort=effort, cost=cost, time=time, habit=habit, learning=learning, total=total)
+    return Detriment(
+        benefit=benefit,
+        effort=effort,
+        cost=cost,
+        time=time,
+        habit=habit,
+        learning=learning,
+        total=total,
+    )
 
 
 def assign_action_scores(
@@ -238,27 +200,24 @@ def assign_action_scores(
     *,
     category: ImpactCategory | None = None,
 ) -> list[ActionInstance]:
-    """Score a set of candidate actions; prefer easier, higher-impact ones."""
     weights.validate()
     for action in actions:
         detriment = quantify_detriment(action, weights)
-        # Prefer low friction AND meaningful effect; categorically boost match.
-        match = 1.0 if category is None or action.template.category == category else 0.72
-        action.score = round(match * (1.0 - detriment.total) * (0.7 + 0.3 * detriment.benefit), 4)
+        match = (
+            1.0 if category is None or action.template.category == category else 0.72
+        )
+        action.score = round(
+            match * (1.0 - detriment.total) * (0.7 + 0.3 * detriment.benefit), 4
+        )
     return sorted(actions, key=lambda a: a.score or 0.0, reverse=True)
 
 
-# ---------------------------------------------------------------------------
-# Effect feasibility: impact-per-effort combos
-# ---------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class FeasibleGroup:
-    """A set of actions that share one big multiplier and an overall effort."""
-
     name: str
     actions: tuple[ActionInstance, ...]
     multiplier: float
-    total_effort_score: float  # 0..10
+    total_effort_score: float
     total_cost_usd: float
     total_schedule_minutes: float
     impact: ImpactVector
@@ -283,24 +242,15 @@ def compute_feasibility(
     horizon_days: int = 30,
     category: ImpactCategory | None = None,
 ) -> list[FeasibleGroup]:
-    """Partition the chosen plan into feasible 'groups' given a time/£ budget.
-
-    Returns one group per category-ish cluster with the number of times each
-    action can realistically be repeated inside the horizon, and the total
-    effect.
-    """
     minutes_per_week = max(0.0, weekly_effort_hours) * 60.0
     budget = max(0.0, weekly_budget_usd)
     weeks = max(1, horizon_days / 7.0)
-
     grouped: dict[str, list[ActionInstance]] = {}
     for action in actions:
         key = action.template.category.value
         grouped.setdefault(key, []).append(action)
-
     result: list[FeasibleGroup] = []
     for key, members in grouped.items():
-        # How often can this cluster be executed in the horizon?
         total_min = sum(a.template.duration_minutes for a in members)
         total_cost = sum(a.template.cost_usd for a in members)
         min_based = 0.0
@@ -308,9 +258,8 @@ def compute_feasibility(
             min_based = (minutes_per_week * weeks) / total_min
         cost_based = (budget * weeks) / total_cost if total_cost > 0 else float("inf")
         multiplier = max(1.0, min(min_based, cost_based))
-        multiplier = min(multiplier, 90.0)  # cap for sanity
+        multiplier = min(multiplier, 90.0)
         multiplier = float(int(multiplier))
-
         impact = sum_impacts([m.impact * multiplier for m in members])
         effort = sum(m.template.baseline_effort for m in members) / max(1, len(members))
         result.append(
@@ -327,9 +276,6 @@ def compute_feasibility(
     return result
 
 
-# ---------------------------------------------------------------------------
-# Plans
-# ---------------------------------------------------------------------------
 @dataclass(slots=True)
 class Milestone:
     title: str
@@ -340,12 +286,10 @@ class Milestone:
 
 @dataclass(slots=True)
 class PlanEntity:
-    """A reframed goal + chosen actions + milestones + check-ins."""
-
     goal: str
     reframed_goal: str
     category: ImpactCategory
-    scope: str                       # "personal" | "household" | "community"
+    scope: str
     horizon_days: int = 30
     weekly_effort_hours: float = 2.0
     weekly_budget_usd: float = 10.0
@@ -353,9 +297,10 @@ class PlanEntity:
     milestones: list[Milestone] = field(default_factory=list)
     created_at: date = field(default_factory=date.today)
 
-    # -- lifecycle -----------------------------------------------------
     def pick_top(self, k: int, weights: Weights | None = None) -> list[ActionInstance]:
-        scored = assign_action_scores(self.actions, weights or Weights(), category=self.category)
+        scored = assign_action_scores(
+            self.actions, weights or Weights(), category=self.category
+        )
         return scored[:k]
 
     def overview(self, weights: Weights | None = None) -> dict[str, Any]:
@@ -392,27 +337,19 @@ class PlanEntity:
         return sum_impacts([a.impact for a in self.actions if a.impact.is_positive])
 
 
-# ---------------------------------------------------------------------------
-# Tracking & streaks
-# ---------------------------------------------------------------------------
 @dataclass(slots=True)
 class CheckInRecord:
     date: date
     action_ids: list[str]
     notes: str = ""
-    feeling_score: int = 3  # 1..5
+    feeling_score: int = 3
 
 
 def compute_streak(dates: list[date] | list[CheckInRecord]) -> int:
-    """Consecutive days with at least one recorded action, ending today-ish.
-
-    Accepts either a list of `date`s or of `CheckInRecord`-shaped objects.
-    """
-    raw: list[date] = [d if isinstance(d, date) else d.date for d in dates]  # type: ignore[union-attr]
+    raw: list[date] = [d if isinstance(d, date) else d.date for d in dates]
     days = set(raw)
     streak = 0
     cursor = date.today()
-    # If today has no check-in yet, allow the streak to start from yesterday.
     if cursor not in days:
         cursor -= timedelta(days=1)
     while cursor in days:
@@ -421,14 +358,11 @@ def compute_streak(dates: list[date] | list[CheckInRecord]) -> int:
     return streak
 
 
-# ---------------------------------------------------------------------------
-# Reframing (deterministic; AI may add flavour on top)
-# ---------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class Reframe:
     statement: str
-    focus: str                  # what the person controls
-    lever: str                  # what changes
+    focus: str
+    lever: str
     category: ImpactCategory
     confidence: float = 0.8
 
@@ -445,12 +379,95 @@ class Reframe:
 def detect_category(text: str) -> ImpactCategory:
     t = text.lower()
     rules: list[tuple[ImpactCategory, tuple[str, ...]]] = [
-        (ImpactCategory.WASTE, ("waste", "trash", "garbage", "recycl", "landfill", "plastic", "packaging", "compost", "single-use", "litter", "zero-waste")),
-        (ImpactCategory.ENERGY, ("energy", "electric", "electricity", "power", "kwh", "solar", "heating", "cooling", "utility bill", "led")),
-        (ImpactCategory.WATER, ("water", "shower", "tap", "drought", "bath", "leak", "garden watering", "lawn")),
-        (ImpactCategory.TRANSPORT, ("drive", "car", "commute", "transport", "flight", "train", "fuel", "gasoline", "petrol", "bike", "walk")),
-        (ImpactCategory.FOOD, ("food", "eat", "meal", "diet", "meat", "vegetarian", "vegan", "grocer", "leftover", "hunger")),
-        (ImpactCategory.CONSUMPTION, ("buy", "purchase", "shopping", "clothing", "fast fashion", "electronics", "stuff", "things", "possessions")),
+        (
+            ImpactCategory.WASTE,
+            (
+                "waste",
+                "trash",
+                "garbage",
+                "recycl",
+                "landfill",
+                "plastic",
+                "packaging",
+                "compost",
+                "single-use",
+                "litter",
+                "zero-waste",
+            ),
+        ),
+        (
+            ImpactCategory.ENERGY,
+            (
+                "energy",
+                "electric",
+                "electricity",
+                "power",
+                "kwh",
+                "solar",
+                "heating",
+                "cooling",
+                "utility bill",
+                "led",
+            ),
+        ),
+        (
+            ImpactCategory.WATER,
+            (
+                "water",
+                "shower",
+                "tap",
+                "drought",
+                "bath",
+                "leak",
+                "garden watering",
+                "lawn",
+            ),
+        ),
+        (
+            ImpactCategory.TRANSPORT,
+            (
+                "drive",
+                "car",
+                "commute",
+                "transport",
+                "flight",
+                "train",
+                "fuel",
+                "gasoline",
+                "petrol",
+                "bike",
+                "walk",
+            ),
+        ),
+        (
+            ImpactCategory.FOOD,
+            (
+                "food",
+                "eat",
+                "meal",
+                "diet",
+                "meat",
+                "vegetarian",
+                "vegan",
+                "grocer",
+                "leftover",
+                "hunger",
+            ),
+        ),
+        (
+            ImpactCategory.CONSUMPTION,
+            (
+                "buy",
+                "purchase",
+                "shopping",
+                "clothing",
+                "fast fashion",
+                "electronics",
+                "stuff",
+                "things",
+                "possessions",
+            ),
+        ),
     ]
     scored: list[tuple[int, ImpactCategory]] = []
     for category, keywords in rules:
@@ -464,7 +481,6 @@ def detect_category(text: str) -> ImpactCategory:
 
 
 def reframe_goal(goal: str) -> Reframe:
-    """Turn a vague concern into a specific, measurable behaviour target."""
     category = detect_category(goal)
     focus = {
         ImpactCategory.WASTE: "the items and packaging you choose day to day",
@@ -484,8 +500,8 @@ def reframe_goal(goal: str) -> Reframe:
     }[category]
     return Reframe(
         statement=(
-            f"Instead of worrying broadly about “{goal.strip()[:80]}”, focus on one thing "
-            f"you control: {focus}. Your lever is {lever} — measured as the totals on your "
+            f"Instead of worrying broadly about “{goal .strip ()[:80 ]}”, focus on one thing "
+            f"you control: {focus }. Your lever is {lever } — measured as the totals on your "
             f"StepWise dashboard."
         ),
         focus=focus,
