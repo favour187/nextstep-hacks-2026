@@ -110,10 +110,18 @@ def chat(
     db: Session, message: str, goal: GoalEntity | None, gateway: AIGateway | None = None
 ) -> dict[str, Any]:
     gateway = gateway or get_gateway()
-    summary = goal.to_dict() if goal is not None else None
+    user_text = message
+    if goal is not None:
+        import json as _json
+
+        user_text = (
+            message
+            + "\n\nCurrent plan for this user (JSON):\n"
+            + _json.dumps(goal.to_dict(), default=str)[:2000]
+        )
     result = gateway.chat(
         system=ai_skills.SYSTEM_PROMPT,
-        user=message,
+        user=user_text,
         max_tokens=420,
     )
     return {
