@@ -96,7 +96,8 @@ SYSTEM_PROMPT = (
     "measurable next steps. Use plain language. Never invent numbers; if you quote "
     "an impact, call it an estimate. If the user asks for an explanation, explain "
     "the decision model (impact vs effort, cost, time, habit, learning). Keep "
-    "answers under 120 words unless asked for more."
+    "answers under 120 words unless asked for more. "
+    "Reply in plain text only: no markdown, no asterisks, no bullet symbols."
 )
 
 def build_messages(
