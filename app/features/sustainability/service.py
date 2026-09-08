@@ -18,10 +18,8 @@ from app.features.sustainability.repository import (
     update_goal_impact,
 )
 
-
 def _impact_to_dict(vec: ImpactVector) -> dict[str, float]:
     return vec.to_dict()
-
 
 def create_plan_for_user(
     db: Session, user_id: str, payload: dict[str, Any]
@@ -53,14 +51,11 @@ def create_plan_for_user(
     )
     return goal.to_dict()
 
-
 def get_goal_for_user(db: Session, user_id: str, goal_id: str) -> GoalEntity | None:
     return get_goal(db, goal_id, user_id)
 
-
 def list_for_user(db: Session, user_id: str) -> list[dict[str, Any]]:
     return [g.to_dict() for g in list_goals(db, user_id)]
-
 
 def record_check_in(
     db: Session,
@@ -108,10 +103,8 @@ def record_check_in(
         "streak": streak,
     }
 
-
 def plan_streak(db: Session, goal: GoalEntity) -> int:
     return compute_streak(list(goal.check_ins))
-
 
 def chat(
     db: Session, message: str, goal: GoalEntity | None, gateway: AIGateway | None = None

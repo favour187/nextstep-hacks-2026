@@ -5,7 +5,6 @@ from datetime import date, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
-
 class ImpactCategory(StrEnum):
     WASTE = "waste"
     ENERGY = "energy"
@@ -13,7 +12,6 @@ class ImpactCategory(StrEnum):
     TRANSPORT = "transport"
     FOOD = "food"
     CONSUMPTION = "consumption"
-
 
 class FrictionKind(StrEnum):
     COST = "cost"
@@ -23,9 +21,7 @@ class FrictionKind(StrEnum):
     HABIT = "habit"
     ACCESS = "access"
 
-
 UNIT_KEYS = ("kg", "co2e_kg", "kwh", "litres", "kg_food", "items")
-
 
 @dataclass(frozen=True, slots=True)
 class ImpactVector:
@@ -53,13 +49,11 @@ class ImpactVector:
     def is_positive(self) -> bool:
         return any(getattr(self, k) > 0 for k in UNIT_KEYS)
 
-
 def sum_impacts(vectors: list[ImpactVector]) -> ImpactVector:
     total = ImpactVector()
     for v in vectors:
         total = total + v
     return total
-
 
 @dataclass(frozen=True, slots=True)
 class ActionTemplate:
@@ -74,7 +68,6 @@ class ActionTemplate:
     needs_learning: bool
     setup_minutes: float = 0.0
     description: str = ""
-
 
 @dataclass(frozen=True, slots=True)
 class Weights:
@@ -96,7 +89,6 @@ class Weights:
         )
         if abs(total - 1.0) > 1e-6:
             raise ValueError(f"Weights must sum to 1.0 (got {total })")
-
 
 @dataclass(slots=True)
 class ActionInstance:
@@ -129,7 +121,6 @@ class ActionInstance:
             "note": self.note,
         }
 
-
 @dataclass(frozen=True, slots=True)
 class Detriment:
     benefit: float
@@ -151,14 +142,12 @@ class Detriment:
             "total": round(self.total, 4),
         }
 
-
 def _log_scale(value: float, reference: float = 8.0) -> float:
     if value <= 0:
         return 0.0
     import math
 
     return min(1.0, math.log1p(value) / math.log1p(reference))
-
 
 def quantify_detriment(action: ActionInstance, weights: Weights) -> Detriment:
     t = action.template
@@ -193,7 +182,6 @@ def quantify_detriment(action: ActionInstance, weights: Weights) -> Detriment:
         total=total,
     )
 
-
 def assign_action_scores(
     actions: list[ActionInstance],
     weights: Weights,
@@ -210,7 +198,6 @@ def assign_action_scores(
             match * (1.0 - detriment.total) * (0.7 + 0.3 * detriment.benefit), 4
         )
     return sorted(actions, key=lambda a: a.score or 0.0, reverse=True)
-
 
 @dataclass(frozen=True, slots=True)
 class FeasibleGroup:
@@ -232,7 +219,6 @@ class FeasibleGroup:
             "total_schedule_minutes": round(self.total_schedule_minutes, 1),
             "impact": self.impact.to_dict(),
         }
-
 
 def compute_feasibility(
     actions: list[ActionInstance],
@@ -275,14 +261,12 @@ def compute_feasibility(
         )
     return result
 
-
 @dataclass(slots=True)
 class Milestone:
     title: str
     due_offset_days: int
     done: bool = False
     note: str = ""
-
 
 @dataclass(slots=True)
 class PlanEntity:
@@ -336,14 +320,12 @@ class PlanEntity:
     def total_impact(self) -> ImpactVector:
         return sum_impacts([a.impact for a in self.actions if a.impact.is_positive])
 
-
 @dataclass(slots=True)
 class CheckInRecord:
     date: date
     action_ids: list[str]
     notes: str = ""
     feeling_score: int = 3
-
 
 def compute_streak(dates: list[date] | list[CheckInRecord]) -> int:
     raw: list[date] = [d if isinstance(d, date) else d.date for d in dates]
@@ -356,7 +338,6 @@ def compute_streak(dates: list[date] | list[CheckInRecord]) -> int:
         streak += 1
         cursor -= timedelta(days=1)
     return streak
-
 
 @dataclass(frozen=True, slots=True)
 class Reframe:
@@ -374,7 +355,6 @@ class Reframe:
             "category": self.category.value,
             "confidence": self.confidence,
         }
-
 
 def detect_category(text: str) -> ImpactCategory:
     t = text.lower()
@@ -478,7 +458,6 @@ def detect_category(text: str) -> ImpactCategory:
         return ImpactCategory.WASTE
     scored.sort(reverse=True)
     return scored[0][1]
-
 
 def reframe_goal(goal: str) -> Reframe:
     category = detect_category(goal)

@@ -321,14 +321,11 @@ LIBRARY: list[ActionTemplate] = [
     ),
 ]
 
-
 def get_template(action_id: str) -> ActionTemplate | None:
     return next((t for t in LIBRARY if t.action_id == action_id), None)
 
-
 def templates_for_category(category: ImpactCategory) -> list[ActionTemplate]:
     return [t for t in LIBRARY if t.category == category]
-
 
 def all_templates() -> list[ActionTemplate]:
     return list(LIBRARY)

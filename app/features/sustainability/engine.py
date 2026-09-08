@@ -16,7 +16,6 @@ from app.features.sustainability.core import (
 )
 from app.features.sustainability.library import templates_for_category
 
-
 @dataclass(slots=True)
 class GeneratedPlan:
     reframe: Reframe
@@ -38,10 +37,8 @@ class GeneratedPlan:
             "explanation": self.explanation,
         }
 
-
 _MAX_ACTIONS = 6
 _MIN_ACTIONS = 4
-
 
 def plan_for_goal(
     goal: str,
@@ -89,7 +86,6 @@ def plan_for_goal(
         explanation=explanation,
     )
 
-
 def _neighbour(category: ImpactCategory) -> ImpactCategory:
     return {
         ImpactCategory.WASTE: ImpactCategory.CONSUMPTION,
@@ -99,7 +95,6 @@ def _neighbour(category: ImpactCategory) -> ImpactCategory:
         ImpactCategory.FOOD: ImpactCategory.WASTE,
         ImpactCategory.CONSUMPTION: ImpactCategory.WASTE,
     }[category]
-
 
 def _build_milestones(
     actions: list[ActionInstance], horizon_days: int
@@ -139,7 +134,6 @@ def _build_milestones(
     )
     return steps
 
-
 def plan_manifest(plan: GeneratedPlan) -> dict[str, Any]:
     return {
         "reframe": plan.reframe.to_dict(),
@@ -150,7 +144,6 @@ def plan_manifest(plan: GeneratedPlan) -> dict[str, Any]:
         "total_impact": plan.total_impact.to_dict(),
         "explanation": plan.explanation,
     }
-
 
 def apply_checkin(
     plan: PlanEntity,

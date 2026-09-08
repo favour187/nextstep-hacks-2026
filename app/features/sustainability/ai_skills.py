@@ -5,7 +5,6 @@ from typing import Any
 from app.core.ai import AIMessage, AIProvider, LocalDemoProvider
 from app.features.sustainability.core import ImpactVector
 
-
 class AIExplainSkill:
     id = "explain"
 
@@ -23,7 +22,6 @@ class AIExplainSkill:
             f"behaviour science shows that small consistent actions beat big intentions. "
             f"Do you want me to lay out your top 3 candidate actions?"
         )
-
 
 class AIPlanSkill:
     id = "plan"
@@ -52,7 +50,6 @@ class AIPlanSkill:
             indent=None,
         )
 
-
 class AITipSkill:
     id = "tip"
 
@@ -67,7 +64,6 @@ class AITipSkill:
             "two-minute action per day (e.g. turning the tap off while brushing) — "
             "consistency compounds, and the dashboard will show it within a week."
         )
-
 
 class AIReviewSkill:
     id = "review"
@@ -84,7 +80,6 @@ class AIReviewSkill:
             "that matters most is the one you can repeat tomorrow."
         )
 
-
 LOCAL_SKILLS: list[Any] = [
     AIExplainSkill(),
     AIPlanSkill(),
@@ -92,10 +87,8 @@ LOCAL_SKILLS: list[Any] = [
     AIReviewSkill(),
 ]
 
-
 def local_provider() -> AIProvider:
     return LocalDemoProvider(LOCAL_SKILLS)
-
 
 SYSTEM_PROMPT = (
     "You are StepWise, a kind, concise sustainability coach for a hackathon demo. "
@@ -105,7 +98,6 @@ SYSTEM_PROMPT = (
     "the decision model (impact vs effort, cost, time, habit, learning). Keep "
     "answers under 120 words unless asked for more."
 )
-
 
 def build_messages(
     user_text: str, plan_summary: dict[str, Any] | None = None
@@ -120,7 +112,6 @@ def build_messages(
         AIMessage(role="system", content=SYSTEM_PROMPT),
         AIMessage(role="user", content=user_text + context),
     ]
-
 
 def parse_payload(text: str) -> dict[str, Any]:
     text = text.strip()

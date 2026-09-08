@@ -1,11 +1,9 @@
 from __future__ import annotations
 from app.core.testing import auth_headers, create_user
 
-
 def _auth(client) -> dict[str, str]:
     data = create_user(client, email="stepwise@example.com")
     return auth_headers(data["token"])
-
 
 def test_full_flow(client):
     headers = _auth(client)
@@ -73,7 +71,6 @@ def test_full_flow(client):
     assert body["reply"]
     assert body["used_fallback"] is True
     assert client.get("/api/sustainability/goals").status_code == 401
-
 
 def test_goal_requires_meaningful_text(client):
     headers = _auth(client)

@@ -8,10 +8,8 @@ from sqlalchemy import DateTime, ForeignKey, String, Text, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 from app.core.db import Base, TimestampsMixin, UUIDMixin, iso_utc, utcnow
 
-
 def _json_dumps(value: Any) -> str:
     return json.dumps(value, default=str)
-
 
 def _json_loads(raw: str | None) -> Any:
     if not raw:
@@ -20,7 +18,6 @@ def _json_loads(raw: str | None) -> Any:
         return json.loads(raw)
     except json.JSONDecodeError:
         return None
-
 
 class GoalEntity(UUIDMixin, TimestampsMixin, Base):
     __tablename__ = "sustainability_goals"
@@ -63,7 +60,6 @@ class GoalEntity(UUIDMixin, TimestampsMixin, Base):
             "created_at": iso_utc(self.created_at),
         }
 
-
 class CheckInEntity(UUIDMixin, Base):
     __tablename__ = "sustainability_check_ins"
     goal_id: Mapped[uuid.UUID] = mapped_column(
@@ -89,7 +85,6 @@ class CheckInEntity(UUIDMixin, Base):
             "feeling_score": self.feeling_score,
         }
 
-
 def create_goal(db: Session, user_id: str, data: dict[str, Any]) -> GoalEntity:
     goal = GoalEntity(
         user_id=user_id,
@@ -108,14 +103,12 @@ def create_goal(db: Session, user_id: str, data: dict[str, Any]) -> GoalEntity:
     db.refresh(goal)
     return goal
 
-
 def get_goal(db: Session, goal_id: str, user_id: str) -> GoalEntity | None:
     return db.scalar(
         select(GoalEntity).where(
             GoalEntity.id == uuid.UUID(goal_id), GoalEntity.user_id == user_id
         )
     )
-
 
 def list_goals(db: Session, user_id: str) -> list[GoalEntity]:
     stmt = (
@@ -125,11 +118,9 @@ def list_goals(db: Session, user_id: str) -> list[GoalEntity]:
     )
     return list(db.scalars(stmt))
 
-
 def update_goal_impact(db: Session, goal: GoalEntity, impact: dict[str, float]) -> None:
     goal.impact_json = _json_dumps(impact)
     db.commit()
-
 
 def add_check_in(
     db: Session,

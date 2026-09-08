@@ -113,7 +113,7 @@ same flows use the remote LLM with the engine's numbers still driving the UI.
 - **AI assistance disclosure:** development used AI coding tools (Claude-based
   agent tooling on the Arena.ai platform). Every change was reviewed by the
   author; the product's decision logic is deterministic and fully explained by
-  the code + tests. See `docs/COMPLIANCE.md`.
+  the code + tests.
 
 ## Deployment
 
