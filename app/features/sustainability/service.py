@@ -122,7 +122,7 @@ def chat(
     result = gateway.chat(
         system=ai_skills.SYSTEM_PROMPT,
         user=user_text,
-        max_tokens=420,
+        max_tokens=1000,
     )
     return {
         "reply": result.text,
